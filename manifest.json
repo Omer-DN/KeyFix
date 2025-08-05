@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Keyboard Layout Fixer Floating Button",
+  "version": "1.7",
+  "description": "Fix keyboard layout errors with a floating convert button",
+  "permissions": ["activeTab", "scripting"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Keyboard Layout Fixer"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "icons": {
+    "16": "icon.ico"
+  },
+  "web_accessible_resources": [{
+    "resources": ["transTo.png"],
+    "matches": ["<all_urls>"]
+  }]
+}
