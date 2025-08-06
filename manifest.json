@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "KeyFix",
-  "version": "2.3",
+  "version": "2.0",
   "description": "Fix keyboard layout errors with a floating convert button",
 "permissions": [
   "activeTab",
@@ -11,7 +11,6 @@
 ],
 
   "action": {
-    "default_popup": "popup.html",
     "default_title": "Keyboard Layout Fixer"
   },
   "commands": {
