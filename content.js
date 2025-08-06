@@ -28,29 +28,35 @@ let floatingBtn = null;
 let lastMouseX = 0;
 let lastMouseY = 0;
 
-// Track mouse position for fallback placement
 document.addEventListener('mousemove', (e) => {
   lastMouseX = e.clientX;
   lastMouseY = e.clientY;
 });
 
 function createFloatingButton() {
+  if (floatingBtn) return;
+
   floatingBtn = document.createElement('button');
   floatingBtn.style.position = 'fixed';
   floatingBtn.style.zIndex = '2147483647';
-  floatingBtn.style.padding = '4px';
-  floatingBtn.style.border = 'none';
-  floatingBtn.style.backgroundColor = 'transparent';
+  floatingBtn.style.padding = '0';
+  floatingBtn.style.margin = '0';
+  floatingBtn.style.border = '1px solid rgba(0, 0, 0, 0.2)';
+  floatingBtn.style.boxShadow = '0 1px 3px rgba(0,0,0,0.15)';
+  floatingBtn.style.borderRadius = '4px';
+  floatingBtn.style.width = '24px';
+  floatingBtn.style.height = '24px';
+  floatingBtn.style.boxSizing = 'border-box';
   floatingBtn.style.cursor = 'pointer';
-  floatingBtn.style.boxShadow = '0 3px 8px rgba(0,0,0,0.3)';
-  floatingBtn.style.borderRadius = '6px';
 
   const img = document.createElement('img');
   img.src = chrome.runtime.getURL('transTo.png');
   img.alt = 'Convert';
-  img.style.width = '32px';
-  img.style.height = '32px';
+  img.style.width = '20px';
+  img.style.height = '20px';
   img.style.display = 'block';
+  img.style.margin = '0';
+  img.style.padding = '0';
 
   floatingBtn.appendChild(img);
   document.body.appendChild(floatingBtn);
@@ -58,6 +64,7 @@ function createFloatingButton() {
   floatingBtn.addEventListener('click', async () => {
     const selection = window.getSelection();
     if (!selection.rangeCount) return;
+
     const selectedText = selection.toString();
     if (!selectedText) return;
 
@@ -66,23 +73,60 @@ function createFloatingButton() {
 
     try {
       const range = selection.getRangeAt(0);
-      range.deleteContents();
-      range.insertNode(document.createTextNode(converted));
-      selection.removeAllRanges();
-      replaced = true;
+      let editableElement = null;
+
+      if (range.commonAncestorContainer.nodeType === Node.TEXT_NODE) {
+        editableElement = range.commonAncestorContainer.parentElement.closest('[contenteditable=true]');
+      } else if (range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE) {
+        editableElement = range.commonAncestorContainer.closest('[contenteditable=true]');
+      }
+
+      if (editableElement || document.activeElement.isContentEditable) {
+        range.deleteContents();
+        range.insertNode(document.createTextNode(converted));
+
+        selection.removeAllRanges();
+        const newRange = document.createRange();
+        newRange.setStart(range.endContainer, range.endOffset);
+        newRange.collapse(true);
+        selection.addRange(newRange);
+
+        replaced = true;
+      } else {
+        const active = document.activeElement;
+        if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
+          const start = active.selectionStart;
+          const end = active.selectionEnd;
+          const val = active.value;
+          active.value = val.slice(0, start) + converted + val.slice(end);
+          active.selectionStart = active.selectionEnd = start + converted.length;
+          replaced = true;
+        } else {
+          range.deleteContents();
+          range.insertNode(document.createTextNode(converted));
+          replaced = true;
+        }
+      }
     } catch (err) {
       console.warn("❌ לא ניתן להחליף טקסט, עובר להעתקה ללוח", err);
       replaced = false;
     }
 
-    if (!replaced) {
-      try {
-        await navigator.clipboard.writeText(converted);
-        alert("✔️ הטקסט תורגם והועתק. תוכל להדביק עם Ctrl+V.");
-      } catch (e) {
-        alert("❌ שגיאה בהעתקה. הנה הטקסט המתורגם:\n" + converted);
-      }
+    try {
+      await navigator.clipboard.writeText(converted);
+    } catch (e) {
+      console.warn("❌ שגיאה בהעתקת הטקסט ללוח", e);
     }
+let alreadyShown = true;
+
+/*if (alreadyShown) {
+    alert("✔️ הטקסט תורגם והועתק ללוח. הודעה זו לא תוצג בעתיד");
+    alreadyShown = false;
+} else if (!shouldShowMessage) {
+    alert("✔️ לא הצלחנו להחליף בטקסט ישירות, אבל הטקסט תורגם והועתק ללוח. תוכל להדביק (Ctrl+V).");
+}*/
+
+
 
     hideButton();
   });
@@ -106,7 +150,6 @@ document.addEventListener('selectionchange', () => {
   const text = selection.toString().trim();
 
   if (text.length > 0) {
-    console.log("📌 טקסט שסומן:", text);
     if (!floatingBtn) createFloatingButton();
 
     let x = lastMouseX;
@@ -115,20 +158,23 @@ document.addEventListener('selectionchange', () => {
     try {
       const range = selection.getRangeAt(0);
       const rect = range.getBoundingClientRect();
-      console.log("📏 rect:", rect);
 
       if (rect && rect.width > 0 && rect.height > 0) {
         x = rect.left;
         y = rect.top - 40;
-      } else {
-        console.log("🟡 rect ריק, נשתמש במיקום העכבר");
       }
     } catch (e) {
-      console.log("⚠️ שגיאה ב-getRangeAt, נשתמש במיקום העכבר", e);
+      // נשאר עם מיקום העכבר
     }
 
+    const maxX = window.innerWidth - 40;
+    const maxY = window.innerHeight - 40;
+    if (x > maxX) x = maxX;
+    if (y < 0) y = 0;
+    if (y > maxY) y = maxY;
+
     showButtonAt(x, y);
-  } else if (floatingBtn) {
+  } else {
     hideButton();
   }
 });
