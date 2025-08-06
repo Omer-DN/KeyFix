@@ -45,6 +45,6 @@ Follow these steps to install and run the extension locally in your browser:
 Created by Omer-DN
 If you encounter any issues or bugs, please feel free to contact me.
 
-Email: omerdayan94@.com
+Email: omerdayan94@gmail.com
 
 GitHub: https://github.com/Omer-DN
